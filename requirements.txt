@@ -1,0 +1,5 @@
+Flask>=2.3
+requests>=2.31
+Pillow>=10.0
+python-docx>=0.8.11
+pypdf>=4.0
