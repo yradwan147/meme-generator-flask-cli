@@ -54,10 +54,25 @@ python3 app.py
   `pdftotext` binary but transparently falls back to `pypdf` so the project
   runs on environments without xpdf installed.
 
+## Dependencies
+
+All declared in `requirements.txt`:
+
+* `Flask` — web app
+* `requests` — fetching user-submitted image URLs
+* `Pillow` — image manipulation
+* `python-docx` — DOCX ingest
+* `pypdf` — PDF fallback when `pdftotext` is not on PATH
+* `pandas` — CSV ingest
+
+System dependency: `pdftotext` (xpdf/poppler) is preferred for PDF
+ingest; the project falls back to `pypdf` if it's not installed.
+
 ## Standing-out work
 
 * Fully-typed function signatures (`-> List[QuoteModel]`, `Optional[str]`,
-  …) and module-level docstrings.
+  …) and PEP-257 module / class / public-method / `__init__` docstrings
+  on every file.
 * `MemeEngine` adds a 1-pixel black outline behind the white text so the
   caption stays readable on bright photos.
 * The web app cleans up the temporary downloaded image in a `finally`

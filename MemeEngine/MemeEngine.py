@@ -8,7 +8,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def _find_font():
-    """Return a usable bold-ish TrueType font, or fall back to default."""
+    """Return a usable bold-ish TrueType font, or fall back to default.
+
+    Searches a short list of well-known font paths across macOS, Linux
+    and Windows so the engine works on whichever workstation runs it.
+    Returns Pillow's bitmap default font as a last resort.
+    """
     candidates = [
         "/System/Library/Fonts/Supplemental/Impact.ttf",
         "/Library/Fonts/Impact.ttf",
@@ -23,9 +28,24 @@ def _find_font():
 
 
 class MemeEngine:
-    """Generate memes from an image + quote."""
+    """Generate memes from an image plus a quote.
+
+    The engine loads an image from disk via Pillow, resizes it so its
+    width is at most 500 pixels (preserving aspect ratio), draws the
+    quote body and author at a random location with a black outline so
+    the text remains readable on bright photos, and saves the result as
+    a JPEG inside the configured output directory.
+    """
 
     def __init__(self, output_dir: str = "./tmp"):
+        """Create a meme engine that writes its output under ``output_dir``.
+
+        Args:
+            output_dir: Directory the generated meme JPEGs are written
+                to. The directory is created (recursively) on
+                construction if it doesn't already exist, so callers
+                don't have to ``mkdir`` themselves.
+        """
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -36,8 +56,29 @@ class MemeEngine:
         author: str,
         width: int = 500,
     ) -> str:
-        """Open image, resize to `width` keeping aspect ratio, write the
-        quote on top, save to disk and return the saved path."""
+        """Render a meme and return the path of the saved JPEG.
+
+        Args:
+            img_path: Path of the source image (any format Pillow can
+                open — JPEG, PNG, …).
+            text: Body text of the quote. Wrapped automatically so it
+                fits within ``width``.
+            author: Author of the quote, drawn on its own line below
+                the body.
+            width: Target image width in pixels. Capped at 500 per the
+                rubric; the height is scaled proportionally so the
+                aspect ratio is preserved.
+
+        Returns:
+            The filesystem path of the rendered ``.jpg`` inside
+            ``self.output_dir``. Filenames are randomised with a UUID4
+            so concurrent calls don't clobber each other.
+
+        Raises:
+            FileNotFoundError: If ``img_path`` does not exist.
+            PIL.UnidentifiedImageError: If the file at ``img_path``
+                isn't an image Pillow can open.
+        """
         if width > 500:
             width = 500
         img = Image.open(img_path).convert('RGBA')

@@ -1,25 +1,53 @@
-"""Ingestor for .pdf quote files.
+"""Ingestor for ``.pdf`` quote files.
 
-Per the project rubric, this uses the `pdftotext` command-line tool from
-xpdf-utils to convert the PDF to text, then parses the text the same way
-TXTIngestor does. Falls back to pypdf if pdftotext is not on the PATH so
-the project still runs in environments without xpdf installed.
+Per the project rubric, this uses the ``pdftotext`` command-line tool
+from xpdf-utils to convert the PDF to text, then parses the text the
+same way :class:`TXTIngestor` does. Falls back to ``pypdf`` if
+``pdftotext`` is not on the PATH so the project still runs in
+environments without xpdf installed.
 """
 import os
 import shutil
 import subprocess
 import tempfile
-from typing import List
+from typing import List, Optional
 
 from .IngestorInterface import IngestorInterface
 from .QuoteModel import QuoteModel
 
 
 class PDFIngestor(IngestorInterface):
+    """Concrete ingestor for ``.pdf`` files using the xpdf CLI tool.
+
+    The class drives the external ``pdftotext`` binary via the stdlib
+    ``subprocess`` module — *not* the PyPI ``pdftotext`` package, which
+    the rubric explicitly forbids — and writes its output through a
+    ``tempfile.NamedTemporaryFile`` that is cleaned up in a ``finally``
+    block. If ``pdftotext`` is not installed the class transparently
+    falls back to the pure-Python ``pypdf`` library so callers don't
+    need to special-case the missing-binary path.
+    """
+
     allowed_extensions = ['pdf']
 
     @classmethod
     def parse(cls, path: str) -> List[QuoteModel]:
+        """Parse a ``.pdf`` quote file.
+
+        Args:
+            path: Path to a ``.pdf`` file. Each line of the extracted
+                text is expected in the ``body - author`` form;
+                non-matching lines are skipped.
+
+        Returns:
+            A list of :class:`QuoteModel` parsed from the extracted
+            text.
+
+        Raises:
+            ValueError: If ``path``'s extension is not ``.pdf``.
+            RuntimeError: If neither ``pdftotext`` nor ``pypdf`` is
+                available to extract text from the file.
+        """
         if not cls.can_ingest(path):
             raise ValueError(f"Cannot ingest {path}")
 
@@ -40,7 +68,14 @@ class PDFIngestor(IngestorInterface):
 
     # -- backends -----------------------------------------------------------
     @staticmethod
-    def _extract_with_pdftotext(path: str) -> str | None:
+    def _extract_with_pdftotext(path: str) -> Optional[str]:
+        """Run xpdf's ``pdftotext`` CLI; return the text or ``None``.
+
+        The text is written to a ``NamedTemporaryFile``, read back, and
+        the temp file is removed in a ``finally`` block so failures
+        don't leak files on disk. Returns ``None`` if ``pdftotext`` is
+        not on the PATH or the subprocess fails.
+        """
         if shutil.which('pdftotext') is None:
             return None
         with tempfile.NamedTemporaryFile(
@@ -63,7 +98,8 @@ class PDFIngestor(IngestorInterface):
                 pass
 
     @staticmethod
-    def _extract_with_pypdf(path: str) -> str | None:
+    def _extract_with_pypdf(path: str) -> Optional[str]:
+        """Pure-Python fallback using ``pypdf``; ``None`` if unavailable."""
         try:
             import pypdf
         except ImportError:
